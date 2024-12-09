@@ -42,12 +42,13 @@ jobs:
     - name: Get EC2 Public IP
       id: outputs
       run: |
-        # cd terraform_cd
-        terraform output -raw ec2_public_ip
+        unset TF_LOG
         echo "Terraform Output: $(terraform output -raw ec2_public_ip)"
-        echo "Sanitized Output: $(terraform output -raw ec2_public_ip | tr -d '\r\n')"
       working-directory: ./terraform_cd
 
     - name: Set EC2 Public IP Output
-      # run: echo "EC2_PUBLIC_IP=$(terraform output -raw ec2_public_ip)" >> $GITHUB_ENV
-      run: echo "EC2_PUBLIC_IP=$(terraform output -raw ec2_public_ip | tr -d '\r\n')" >> $GITHUB_ENV
+      run: |
+        unset TF_LOG
+        echo "EC2_PUBLIC_IP=$(terraform output -raw ec2_public_ip)" >> $GITHUB_ENV
+        # run: echo "EC2_PUBLIC_IP=$(terraform output -raw ec2_public_ip | tr -d '\r\n')" >> $GITHUB_ENV
+      working-directory: ./terraform_cd
