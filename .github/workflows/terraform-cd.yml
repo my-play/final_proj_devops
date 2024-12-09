@@ -47,6 +47,12 @@ jobs:
         echo "ec2_ip=$EC2_PUBLIC_IP" >> $GITHUB_OUTPUT
       working-directory: ./terraform_cd
 
+    - name: Install GitHub CLI
+      run: |
+        sudo yum install -y yum-utils
+        sudo yum-config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo
+        sudo yum install -y gh
+
     - name: Update EC2_PUBLIC_IP Secret
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
