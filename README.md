@@ -2,8 +2,8 @@ Steps to Deploy
 	1.	Add all files to the repository:
 
     git add .
-git commit -m "Add TerraformCD workflow"
-git push origin main
+    git commit -m "Add TerraformCD workflow"
+    git push origin main
 
 
 	2.	Configure GitHub Secrets:
