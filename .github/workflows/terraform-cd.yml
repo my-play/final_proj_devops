@@ -8,6 +8,8 @@ on:
 jobs:
   terraform:
     runs-on: self-hosted
+    outputs:
+      ec2_ip: ${{ steps.get-ec2-ip.outputs.ec2_ip }}
 
     steps:
     - name: Checkout Code
@@ -82,5 +84,12 @@ jobs:
           -H "X-GitHub-Api-Version: 2022-11-28" \
           https://api.github.com/repos/${{ github.repository }}/actions/secrets/EC2_PUBLIC_IP \
           -d "{\"encrypted_value\":\"$ENCRYPTED_VALUE\",\"key_id\":\"$PUBLIC_KEY_ID\"}"
+    
+    - name: Save EC2 IP as artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: ec2-ip
+        path: |
+          echo "${{ steps.get-ec2-ip.outputs.ec2_ip }}" > ec2_ip.txt
     
       
