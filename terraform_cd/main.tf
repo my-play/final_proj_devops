@@ -53,7 +53,7 @@ resource "aws_instance" "k8s_node" {
 }
 
 resource "aws_ebs_volume" "mysql_volume" {
-  availability_zone = "us-east-1a"  # Update this to match your region
+  availability_zone = var.aws_region
   size              = var.mysql_volume_size
   tags = {
     Name = "MySQL-Volume"
