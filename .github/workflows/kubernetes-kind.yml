@@ -24,18 +24,35 @@ jobs:
       id: read-ip
       run: |
         if [ -f ec2_ip.txt ]; then
-          echo "ec2_ip=$(cat ec2_ip.txt)" >> $GITHUB_OUTPUT
+          EC2_IP=$(cat ec2_ip.txt)
+          echo "ec2_ip=$EC2_IP" >> $GITHUB_OUTPUT
+          echo "Found EC2 IP: $EC2_IP"
         else
           echo "Error: EC2 IP file not found"
           exit 1
         fi
 
-    - name: SSH to EC2 and Install Kind
+    - name: Add SSH Key
+      uses: webfactory/ssh-agent@v0.5.3
+      with:
+        ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
+
+    - name: Install Kind on EC2
       run: |
-        ssh -o StrictHostKeyChecking=no ec2-user@${{ steps.read-ip.outputs.ec2_ip }} << EOF 
-        sudo yum update -y
-        curl -Lo ./kind https://kind.sigs.k8s.io/dl/latest/kind-linux-amd64
-        chmod +x ./kind
-        sudo mv ./kind /usr/local/bin
-        kind create cluster --name my-cluster
-        EOF
+        ssh -o StrictHostKeyChecking=no ec2-user@${{ steps.read-ip.outputs.ec2_ip }} << 'EOF'
+          # Install Docker if not present
+          if ! command -v docker &> /dev/null; then
+            sudo yum update -y
+            sudo yum install -y docker
+            sudo service docker start
+            sudo usermod -a -G docker ec2-user
+          fi
+
+          # Install Kind
+          curl -Lo ./kind https://kind.sigs.k8s.io/dl/latest/kind-linux-amd64
+          chmod +x ./kind
+          sudo mv ./kind /usr/local/bin/
+          
+          # Create Kind cluster
+          kind create cluster --name my-cluster
+EOF

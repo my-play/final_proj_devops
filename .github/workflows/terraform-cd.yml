@@ -43,6 +43,8 @@ jobs:
 
     - name: Install Python dependencies
       run: |
+        sudo apt-get update
+        sudo apt-get install -y python3-pip
         python3 -m pip install --upgrade pip
         pip3 install pynacl
     - name: Get EC2 Public IP
@@ -86,10 +88,13 @@ jobs:
           -d "{\"encrypted_value\":\"$ENCRYPTED_VALUE\",\"key_id\":\"$PUBLIC_KEY_ID\"}"
     
     - name: Save EC2 IP as artifact
+      run: |
+        echo "${{ steps.get-ec2-ip.outputs.ec2_ip }}" > ec2_ip.txt
+      
+    - name: Upload EC2 IP artifact
       uses: actions/upload-artifact@v3
       with:
         name: ec2-ip
-        path: |
-          echo "${{ steps.get-ec2-ip.outputs.ec2_ip }}" > ec2_ip.txt
+        path: ec2_ip.txt
     
       
