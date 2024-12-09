@@ -15,6 +15,7 @@ variable "instance_type" {
 }
 
 variable "key_name" {
+  default = "vockey"
   description = "Name of the SSH key pair to access the EC2 instance"
 }
 
