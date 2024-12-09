@@ -43,8 +43,8 @@ jobs:
 
     - name: Install Python dependencies
       run: |
-        sudo apt-get update
-        sudo apt-get install -y python3-pip
+        sudo yum update -y
+        sudo yum install -y python3-pip
         python3 -m pip install --upgrade pip
         pip3 install pynacl
     - name: Get EC2 Public IP
@@ -96,5 +96,6 @@ jobs:
       with:
         name: ec2-ip
         path: ec2_ip.txt
+        retention-days: 1
     
       
