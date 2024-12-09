@@ -1,0 +1,6 @@
+image:
+  repository: dockerhub-username/python-app
+  tag: latest
+
+service:
+  nodePort: 30000

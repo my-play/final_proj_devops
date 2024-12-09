@@ -1,0 +1,45 @@
+name: Application CD
+
+on:
+  workflow_run:
+    workflows: ["Application CI"]
+    types:
+      - completed
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Add SSH Key
+      uses: webfactory/ssh-agent@v0.5.3
+      with:
+        ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
+
+    - name: SSH and Deploy to Kind
+      run: |
+        ssh -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_PUBLIC_IP }} << EOF
+          # Install Helm
+          curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+          chmod +x get_helm.sh
+          ./get_helm.sh
+          helm version
+
+          # Install kubectl (if not already installed)
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin
+          kubectl version --client
+
+          # Deploy Python App
+          helm upgrade --install python-app helm/python-app \
+            --set image.repository=${{ secrets.DOCKER_HUB_USERNAME }}/python-app \
+            --set image.tag=latest
+
+          # Deploy MySQL
+          helm upgrade --install mysql helm/mysql \
+            --set mysql.rootPassword=mysecurepassword
+        EOF
