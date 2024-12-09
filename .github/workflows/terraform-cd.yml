@@ -39,6 +39,10 @@ jobs:
       run: terraform apply -auto-approve tfplan
       working-directory: ./terraform_cd
 
+    - name: Install Python dependencies
+      run: |
+        python3 -m pip install --upgrade pip
+        pip3 install pynacl
     - name: Get EC2 Public IP
       id: get-ec2-ip
       run: |
@@ -47,14 +51,36 @@ jobs:
         echo "ec2_ip=$EC2_PUBLIC_IP" >> $GITHUB_OUTPUT
       working-directory: ./terraform_cd
 
-    - name: Install GitHub CLI
-      run: |
-        sudo yum install -y yum-utils
-        sudo yum-config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo
-        sudo yum install -y gh
-
     - name: Update EC2_PUBLIC_IP Secret
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        gh secret set EC2_PUBLIC_IP --body "${{ steps.get-ec2-ip.outputs.ec2_ip }}"
+        PUBLIC_KEY_INFO=$(curl -L \
+          -H "Accept: application/vnd.github+json" \
+          -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+          -H "X-GitHub-Api-Version: 2022-11-28" \
+          https://api.github.com/repos/${{ github.repository }}/actions/secrets/public-key)
+        
+        PUBLIC_KEY=$(echo $PUBLIC_KEY_INFO | jq -r '.key')
+        PUBLIC_KEY_ID=$(echo $PUBLIC_KEY_INFO | jq -r '.key_id')
+        
+        # Encrypt the secret using Python
+        ENCRYPTED_VALUE=$(python3 -c "
+        from base64 import b64encode
+        from nacl import encoding, public
+        def encrypt(public_key: str, secret_value: str) -> str:
+            public_key = public.PublicKey(public_key.encode('utf-8'), encoding.Base64Encoder())
+            sealed_box = public.SealedBox(public_key)
+            encrypted = sealed_box.encrypt(secret_value.encode('utf-8'))
+            return b64encode(encrypted).decode('utf-8')
+        print(encrypt('$PUBLIC_KEY', '${{ steps.get-ec2-ip.outputs.ec2_ip }}'))
+        ")
+        
+        # Update the secret
+        curl -L \
+          -X PUT \
+          -H "Accept: application/vnd.github+json" \
+          -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+          -H "X-GitHub-Api-Version: 2022-11-28" \
+          https://api.github.com/repos/${{ github.repository }}/actions/secrets/EC2_PUBLIC_IP \
+          -d "{\"encrypted_value\":\"$ENCRYPTED_VALUE\",\"key_id\":\"$PUBLIC_KEY_ID\"}"
+    
+      
