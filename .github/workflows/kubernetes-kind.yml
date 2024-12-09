@@ -2,7 +2,7 @@ name: Kubernetes Kind Setup
 
 on:
   workflow_run:
-    workflows: ["Terraform Infrastructure Setup"]
+    workflows: ["Terraform_Infrastructure_Setup"]
     types:
       - completed
 
@@ -12,10 +12,8 @@ jobs:
 
     steps:
     - name: Retrieve EC2 Public IP from Workflow Terraform_Infrastructure_Setup
-    #   run: |
-        #   echo "EC2 Public IP is ${{ github.event.workflow_run.output.ec2_public_ip }}"
       run: |
-        echo "The EC2 public IP from job1 is: ${{ needs.Terraform_Infrastructure_Setup.outputs.ec2_public_ip }}"
+        echo "The EC2 public IP from Workflow1 is: ${{ needs.Terraform_Infrastructure_Setup.outputs.ec2_public_ip }}"
 
     - name: SSH to EC2 and Install Kind
       run: |
