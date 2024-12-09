@@ -39,9 +39,16 @@ jobs:
       run: terraform apply -auto-approve tfplan
       working-directory: ./terraform_cd
 
+    - name: Get EC2 Public IP
+      id: get-ec2-ip
+      run: |
+        unset TF_LOG
+        EC2_PUBLIC_IP=$(terraform output -raw ec2_public_ip | tr -d '\n')
+        echo "ec2_ip=$EC2_PUBLIC_IP" >> $GITHUB_OUTPUT
+      working-directory: ./terraform_cd
+
     - name: Update EC2_PUBLIC_IP Secret
-      uses: gliech/create-github-secret-action@v1
-      with:
-        name: 'EC2_PUBLIC_IP'
-        value: ${{ steps.get-ec2-ip.outputs.ec2_ip }}
-        pa_token: ${{ secrets.GITHUB_TOKEN }}
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh secret set EC2_PUBLIC_IP --body "${{ steps.get-ec2-ip.outputs.ec2_ip }}"
