@@ -3,7 +3,7 @@ resource "aws_vpc" "main" {
   enable_dns_support   = true
   enable_dns_hostnames = true
   tags = {
-    Name = "main-vpc"
+    Name = "djans-vpc"
   }
 }
 
@@ -12,14 +12,14 @@ resource "aws_subnet" "main" {
   cidr_block = var.subnet_cidr
   map_public_ip_on_launch = true
   tags = {
-    Name = "main-subnet"
+    Name = "djans-subnet"
   }
 }
 
 resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id
   tags = {
-    Name = "main-gateway"
+    Name = "djans-gateway"
   }
 }
 
@@ -32,7 +32,7 @@ resource "aws_route_table" "main" {
   }
 
   tags = {
-    Name = "main-route-table"
+    Name = "djans-route-table"
   }
 }
 
@@ -53,7 +53,7 @@ resource "aws_instance" "k8s_node" {
 }
 
 resource "aws_ebs_volume" "mysql_volume" {
-  availability_zone = var.aws_region
+  availability_zone = "us-east-1d"
   size              = var.mysql_volume_size
   tags = {
     Name = "MySQL-Volume"
