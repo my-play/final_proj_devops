@@ -11,10 +11,11 @@ jobs:
     runs-on: self-hosted
 
     steps:
-    - name: Retrieve EC2 Public IP
+    - name: Retrieve EC2 Public IP from Workflow Terraform_Infrastructure_Setup
     #   run: |
         #   echo "EC2 Public IP is ${{ github.event.workflow_run.output.ec2_public_ip }}"
-      run: echo "EC2_PUBLIC_IP=${{ env.EC2_PUBLIC_IP }}"
+      run: |
+        echo "The EC2 public IP from job1 is: ${{ needs.Terraform_Infrastructure_Setup.outputs.ec2_public_ip }}"
 
     - name: SSH to EC2 and Install Kind
       run: |
