@@ -74,7 +74,7 @@ resource "aws_s3_bucket" "photos_bucket" {
   }
 }
 
-resource "aws_s3_bucket_acl" "photos_bucket_acl" {
-  bucket = aws_s3_bucket.photos_bucket.id
-  acl    = "public-read"
-}
+# resource "aws_s3_bucket_acl" "photos_bucket_acl" {
+#   bucket = aws_s3_bucket.photos_bucket.id
+#   acl    = "public-read"
+# }
