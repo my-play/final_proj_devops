@@ -1,4 +1,4 @@
-name: Terraform CD Pipeline
+name: Terraform Infrastructure Setup
 
 on:
   push:
@@ -7,17 +7,39 @@ on:
 
 jobs:
   terraform:
-    # runs-on: self-hosted  # Runs on the self-hosted runner on the bastion machine
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     steps:
     - name: Checkout Code
       uses: actions/checkout@v3
 
-    - name: Terraform All-in-One
+    - name: Set up Terraform
+      uses: hashicorp/setup-terraform@v2
+      with:
+        terraform_version: 1.5.0
+
+    - name: Initialize Terraform
+      run: terraform init
+      working-directory: ./terraform_cd
+
+    - name: Validate Terraform
+      run: terraform validate
+      working-directory: ./terraform_cd
+
+    - name: Plan Infrastructure
+      run: terraform plan -out=tfplan
+      working-directory: ./terraform_cd
+
+    - name: Apply Infrastructure
+      run: terraform apply -auto-approve tfplan
+      working-directory: ./terraform_cd
+
+    - name: Get EC2 Public IP
+      id: outputs
       run: |
         cd terraform_cd
-        terraform init
-        terraform validate
-        terraform plan -out=tfplan
-        # terraform apply -auto-approve tfplan
+        terraform output -raw ec2_public_ip
+      working-directory: ./terraform_cd
+
+    - name: Set EC2 Public IP Output
+      run: echo "EC2_PUBLIC_IP=$(terraform output -raw ec2_public_ip)" >> $GITHUB_ENV

@@ -1,0 +1,25 @@
+name: Kubernetes Kind Setup
+
+on:
+  workflow_run:
+    workflows: ["Terraform Infrastructure Setup"]
+    types:
+      - completed
+
+jobs:
+  install-kind:
+    runs-on: self-hosted
+
+    steps:
+    - name: Retrieve EC2 Public IP
+      run: echo "EC2_PUBLIC_IP=${{ secrets.EC2_PUBLIC_IP }}" >> $GITHUB_ENV
+
+    - name: SSH to EC2 and Install Kind
+      run: |
+        ssh -o StrictHostKeyChecking=no ec2-user@$EC2_PUBLIC_IP << EOF
+          sudo yum update -y
+          curl -Lo ./kind https://kind.sigs.k8s.io/dl/latest/kind-linux-amd64
+          chmod +x ./kind
+          sudo mv ./kind /usr/local/bin
+          kind create cluster --name my-cluster
+        EOF
