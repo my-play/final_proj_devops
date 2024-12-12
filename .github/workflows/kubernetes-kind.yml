@@ -1,58 +1,67 @@
-name: Kubernetes Kind Setup
+name: Kubernetes Deployment
 
 on:
-  workflow_run:
-    workflows: ["Terraform_Infrastructure_Setup"]
-    types:
-      - completed
+  repository_dispatch:
+    types: [deploy-to-kubernetes]
 
 jobs:
-  install-kind:
+  deploy:
     runs-on: self-hosted
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
-
     steps:
-    - name: Download workflow artifact
-      uses: dawidd6/action-download-artifact@v2
-      with:
-        workflow: Terraform_Infrastructure_Setup
-        run_id: ${{ github.event.workflow_run.id }}
-        name: ec2-ip
-        path: .
+      - name: Get EC2 IP
+        run: |
+          echo "Using EC2 IP: ${{ github.event.client_payload.ec2_ip }}"
+          echo "EC2_IP=${{ github.event.client_payload.ec2_ip }}" >> $GITHUB_ENV
 
-    - name: Read EC2 IP
-      id: read-ip
-      run: |
-        if [ -f ec2_ip.txt ]; then
-          EC2_IP=$(cat ec2_ip.txt)
-          echo "ec2_ip=$EC2_IP" >> $GITHUB_OUTPUT
-          echo "Found EC2 IP: $EC2_IP"
-        else
-          echo "Error: EC2 IP file not found"
-          exit 1
-        fi
+      - name: Setup SSH Key
+        run: |
+          echo "${{ secrets.EC2_SSH_KEY }}" > private_key.pem
+          chmod 600 private_key.pem
 
-    - name: Add SSH Key
-      uses: webfactory/ssh-agent@v0.5.3
-      with:
-        ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
+      - name: Wait for EC2 SSH to be ready
+        run: |
+          timeout=300
+          while ! ssh -o StrictHostKeyChecking=no -i private_key.pem ubuntu@${EC2_IP} echo "SSH ready"
+          do
+            sleep 10
+            timeout=$((timeout - 10))
+            if [ $timeout -le 0 ]; then
+              echo "Timeout waiting for SSH"
+              exit 1
+            fi
+          done
 
-    - name: Install Kind on EC2
-      run: |
-        ssh -o StrictHostKeyChecking=no ec2-user@${{ steps.read-ip.outputs.ec2_ip }} << 'EOF'
-          # Install Docker if not present
-          if ! command -v docker &> /dev/null; then
-            sudo yum update -y
-            sudo yum install -y docker
-            sudo service docker start
-            sudo usermod -a -G docker ec2-user
-          fi
+      - name: Install Docker and Kind
+        run: |
+          ssh -i private_key.pem ubuntu@${EC2_IP} '
+            # Install Docker
+            sudo apt-get update
+            sudo apt-get install -y ca-certificates curl gnupg
+            sudo install -m 0755 -d /etc/apt/keyrings
+            curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+            sudo chmod a+r /etc/apt/keyrings/docker.gpg
+            echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | sudo tee /etc/apt/sources.list.d/docker.list
+            sudo apt-get update
+            sudo apt-get install -y docker-ce docker-ce-cli containerd.io
+            sudo usermod -aG docker ubuntu
 
-          # Install Kind
-          curl -Lo ./kind https://kind.sigs.k8s.io/dl/latest/kind-linux-amd64
-          chmod +x ./kind
-          sudo mv ./kind /usr/local/bin/
-          
-          # Create Kind cluster
-          kind create cluster --name my-cluster
-EOF
+            # Install Kind
+            curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64
+            chmod +x ./kind
+            sudo mv ./kind /usr/local/bin/kind
+
+            # Install kubectl
+            curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+            chmod +x kubectl
+            sudo mv kubectl /usr/local/bin/
+
+            # Create Kind cluster
+            kind create cluster --name my-cluster
+          '
+
+      - name: Verify Cluster
+        run: |
+          ssh -i private_key.pem ubuntu@${EC2_IP} '
+            kubectl cluster-info
+            kubectl get nodes
+          '

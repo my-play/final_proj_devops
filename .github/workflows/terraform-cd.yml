@@ -65,5 +65,12 @@ jobs:
         name: ec2-ip
         path: ec2_ip.txt
         retention-days: 1
+
+    - name: Trigger Kubernetes Workflow
+      uses: peter-evans/repository-dispatch@v2
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        event-type: deploy-to-kubernetes
+        client-payload: '{"ec2_ip": "${{ steps.get-ec2-ip.outputs.ec2_ip }}"}'
     
       
